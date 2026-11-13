@@ -94,6 +94,15 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
+  /* Blocking timer
+   * HAL_TIM_Base_Start(&htim2);
+   * while(1)
+   * {
+   *    while(!(TIM2->SR & TIM_SR_UIF));
+   *    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+   * 
+   * }
+   */ 
   /* USER CODE END 2 */
 
   /* Infinite loop */
