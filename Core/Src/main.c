@@ -117,6 +117,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    if (capture_status)
+    {
+      if (capture_diff != 0)
+      {
+        double timer_hz = (double) (HAL_RCC_GetPCLK1Freq() * 2U) / (htim2.Init.Prescaler + 1);
+        double signal_freq = capture_diff / timer_hz;
+
+        sprintf(usr_msg, "Frequency = %.2f Hz\r\n", signal_freq);
+        HAL_UART_Transmit(&huart2,(uint8_t*)usr_msg,strlen(usr_msg),HAL_MAX_DELAY);
+        capture_status = 0;
+      }
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -308,6 +320,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM2)
   {
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  }
+}
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  static uint32_t input_captures[2] = {0}; 
+  static uint8_t count = 1;
+
+  if (count == 1)
+  {
+    input_captures[0] = __HAL_TIM_GET_COMPARE(htim, TIM_CHANNEL_1);
+    count++;
+  }
+  else if (count == 2)
+  {
+    input_captures[1] = __HAL_TIM_GET_COMPARE(htim, TIM_CHANNEL_1);
+
+    capture_diff = input_captures[1] - input_captures[0];
+    capture_status = 1;
+    count = 1;
   }
 }
 /* USER CODE END 4 */
