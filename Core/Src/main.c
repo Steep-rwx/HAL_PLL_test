@@ -18,14 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32f4xx_hal_tim.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -122,9 +119,9 @@ int main(void)
       if (capture_diff != 0)
       {
         double timer_hz = (double) (HAL_RCC_GetPCLK1Freq() * 2U) / (htim2.Init.Prescaler + 1);
-        double signal_freq = capture_diff / timer_hz;
+        double signal_freq = timer_hz / capture_diff;
 
-        sprintf(usr_msg, "Frequency = %.2f Hz\r\n", signal_freq);
+        sprintf(usr_msg, "Frequency = %lu Hz\r\n",(unsigned long) signal_freq);
         HAL_UART_Transmit(&huart2,(uint8_t*)usr_msg,strlen(usr_msg),HAL_MAX_DELAY);
         capture_status = 0;
       }
@@ -203,9 +200,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 9999;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4999;
+  htim2.Init.Period = 49999999;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -305,7 +302,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF0_MCO;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -327,19 +324,23 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
   static uint32_t input_captures[2] = {0}; 
   static uint8_t count = 1;
-
-  if (count == 1)
+  if (!capture_status)
   {
-    input_captures[0] = __HAL_TIM_GET_COMPARE(htim, TIM_CHANNEL_1);
-    count++;
-  }
-  else if (count == 2)
-  {
-    input_captures[1] = __HAL_TIM_GET_COMPARE(htim, TIM_CHANNEL_1);
+    if (count == 1)
+    {
+      input_captures[0] = __HAL_TIM_GET_COMPARE(htim, TIM_CHANNEL_1);
+      count++;
+    }
+    else if (count == 2)
+    {
+      input_captures[1] = __HAL_TIM_GET_COMPARE(htim, TIM_CHANNEL_1);
 
-    capture_diff = input_captures[1] - input_captures[0];
-    capture_status = 1;
-    count = 1;
+      capture_diff = (input_captures[1] > input_captures[0]) 
+                   ? input_captures[1] - input_captures[0]
+                   : (htim2.Init.Period - input_captures[0] + input_captures[1] + 1);
+      capture_status = 1;
+      count = 1;
+    }
   }
 }
 /* USER CODE END 4 */
